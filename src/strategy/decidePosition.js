@@ -1,7 +1,7 @@
 
 let runningTimeSec = "";
 
-export function decidePosition(data) {
+export function decidePosition({ olhc, openNewPosition }) {
 
   if (runningTimeSec === "") runningTimeSec = data.eventTime;
   else if (data.eventTime === runningTimeSec) return;
@@ -34,16 +34,10 @@ export function decidePosition(data) {
   }
 
   if (shouldOpenLong) {
-    console.log(`New Position, Entry: ${markPrice} ( Long )`);
-    const allocatedMargin = (quantity * markPrice) / leverage;
-    const position = { entryPrice: markPrice, side: "long", entryTime: data.eventTime + 600, quantity, allocatedMargin };
-    openPositions.push(position);
+    openNewPosition({ side: "long" })
   }
 
   if (shouldOpenShort) {
-    console.log(`New Position, Entry: ${markPrice} ( Short )`);
-    const allocatedMargin = (quantity * markPrice) / leverage;
-    const position = { entryPrice: markPrice, side: "short", entryTime: data.eventTime + 600, quantity, allocatedMargin }
-    openPositions.push(position);
+    openNewPosition({ side: "short" })
   }
 }

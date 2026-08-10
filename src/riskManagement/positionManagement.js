@@ -1,6 +1,6 @@
-function checkLiquidationAndExits(data) {
+export function checkLiquidationAndExits({ ohlc, openPositions, positionHistory, config: { tpRate, slRate } }) {
 
-  const markPrice = window[windowSec - 1];
+  const markPrice = ohlc.markPrice;
 
   //_________________________Liquidation_____________________________
 
@@ -12,7 +12,7 @@ function checkLiquidationAndExits(data) {
     if (isLiquidated) {
       console.log(`A ${side.toUpperCase()} position liquidated. Exit price: $${markPrice}`);
       const { grossPnL, totalFee, netPnL, netRoePercentage } = calculateRealizedPnL({ side, entryPrice, markPrice, quantity, allocatedMargin });
-      const closedPosition = { ...pos, exitPrice: markPrice, exitTime: data.eventTime = 600, totalFee, netPnL, netRoePercentage, tpHit: false, slHit: false, liqudated: true };
+      const closedPosition = { ...pos, exitPrice: markPrice, exitTime: ohlc.eventTime + 600, totalFee, netPnL, netRoePercentage, tpHit: false, slHit: false, liqudated: true };
       positionHistory.push(closedPosition);
       openPositions.splice(i, 1);
     }
@@ -29,7 +29,7 @@ function checkLiquidationAndExits(data) {
     if (isTpHit) {
       console.log(`A ${side.toUpperCase()} position TP hit. Exit price: $${markPrice}`);
       const { grossPnL, totalFee, netPnL, netRoePercentage } = calculateRealizedPnL({ side, entryPrice, markPrice, quantity, allocatedMargin })
-      const closedPosition = { ...pos, exitPrice: markPrice, exitTime: data.eventTime + 600, totalFee, netPnL, netRoePercentage, tpHit: true, slHit: false, liqudated: false };
+      const closedPosition = { ...pos, exitPrice: markPrice, exitTime: ohlc.eventTime + 600, totalFee, netPnL, netRoePercentage, tpHit: true, slHit: false, liqudated: false };
       positionHistory.push(closedPosition);
       openPositions.splice(i, 1);
     }
@@ -45,7 +45,7 @@ function checkLiquidationAndExits(data) {
     if (isSlHit) {
       console.log(`A ${side.toUpperCase()} position hit SL, Entry ($${entryPrice}), Close ($${markPrice})`);
       const { grossPnL, totalFee, netPnL, netRoePercentage } = calculateRealizedPnL({ side, entryPrice, markPrice, quantity, allocatedMargin })
-      const closedPosition = { ...pos, exitPrice: markPrice, exitTime: data.eventTime + 600, totalFee, netPnL, netRoePercentage, tpHit: false, slHit: true, liqudated: false };
+      const closedPosition = { ...pos, exitPrice: markPrice, exitTime: ohlc.eventTime + 600, totalFee, netPnL, netRoePercentage, tpHit: false, slHit: true, liqudated: false };
       positionHistory.push(closedPosition);
       openPositions.splice(i, 1);
     }

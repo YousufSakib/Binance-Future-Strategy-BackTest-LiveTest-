@@ -1,5 +1,7 @@
 import { getRealTimeKlineStream } from "../realTimeStream/kline-candlestick.js";
+import { create_param_combinations } from "./simple-param-combination.js";
 import { exchangeSimulation } from "./simulation.js";
+import { TradeWorkflowEngine } from "./trade-workflow-engine.js";
 
 const symbols = [
     "BTCUSDT",  // # Market Leader / Benchmark
@@ -16,18 +18,24 @@ const symbols = [
 
 const interval = "1m";
 
-const config = {
-    positionHistory: [],
-    openPositions: [],
-    performance: {},
-    slRate: 0.02,
-    tpRate: 0.001,
-    leverage: 5,
-    positionSizeUSDT: 15,
+const executionProfile = {
+    position: {
+        positionHistory: [],
+        openPositions: [],
+    },
+    config: {
+        leverage: 5,
+        positionSizeUSDT: 15,
+    },
     strategy: {
         window: [],
-        windowSec: 30
-    }
+    },
+    variation: {
+        slRate,
+        tpRate,
+        windowSize
+    },
+    performance: {},
 }
 
 
@@ -35,8 +43,29 @@ const config = {
 export function liveTest({ symbols, interval }) {
     const stream = getRealTimeKlineStream({ symbols, interval });
 
-    stream.on("data", (data) => {
-        console.log(data);
+    const tradeWorkFlowEngines = [];
+
+    const variations = create_param_combinations({ slRate, tpRate, windowSize });
+
+    for (let i = 0; i < variations.length; i++) {
+
+        const variation = variations[i];
+
+        const profile = { ...executionProfile, variation };
+
+        for (let j = 0; j < symbols.length; j++) {
+            const lowerCaseSymbol = symbols[j].toLowerCase();
+            const deepClonedProfile = structuredClone(profile);
+            const engine = new TradeWorkflowEngine(deepClonedProfile);
+            tradeWorkFlowEngines.push(engine);
+        }
+    }
+
+    stream.on("olhc", (ohlc) => {
+        for (let i = 0; i < tradeWorkFlowEngines.length; i++) {
+            const engine = tradeWorkFlowEngines[i];
+            engine.nextTick({ ohlc });
+        }
     })
 }
 

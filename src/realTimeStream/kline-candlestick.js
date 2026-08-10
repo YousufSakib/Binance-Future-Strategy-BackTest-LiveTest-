@@ -35,7 +35,7 @@ function connectWSCandleStreams({ url }) {
           takerBuyQuoteVolume: parseFloat(k.Q)              // Taker Buy Quote Asset Volume
         };
 
-        streamEmitter.emit('data', candleData);
+        streamEmitter.emit('olhc', candleData);
 
       } catch (error) {
         logger.error(error.message);
