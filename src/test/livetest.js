@@ -29,23 +29,24 @@ const executionProfile = {
     },
     strategy: {
         window: [],
+        runningTimeSec: ""
     },
     variation: {
-        slRate,
-        tpRate,
-        windowSize
+        slRate: 0.1,
+        tpRate: 0.05,
+        windowSize: 30
     },
     performance: {},
 }
 
 
 
-export function liveTest({ symbols, interval }) {
+export function liveMarketTest({ symbols, interval }) {
     const stream = getRealTimeKlineStream({ symbols, interval });
 
-    const tradeWorkFlowEngines = [];
+    const tradeWorkFlowEngines = {};
 
-    const variations = create_param_combinations({ slRate, tpRate, windowSize });
+    const variations = create_param_combinations(executionProfile.variation);
 
     for (let i = 0; i < variations.length; i++) {
 
@@ -54,19 +55,27 @@ export function liveTest({ symbols, interval }) {
         const profile = { ...executionProfile, variation };
 
         for (let j = 0; j < symbols.length; j++) {
-            const lowerCaseSymbol = symbols[j].toLowerCase();
             const deepClonedProfile = structuredClone(profile);
             const engine = new TradeWorkflowEngine(deepClonedProfile);
-            tradeWorkFlowEngines.push(engine);
+
+            const symblLow = symbols[i].toLowerCase();
+
+            if (!tradeWorkFlowEngines[symblLow]) tradeWorkFlowEngines[symblLow] = [engine];
+            else tradeWorkFlowEngines[symblLow].push(engine);
         }
     }
 
-    stream.on("olhc", (ohlc) => {
-        for (let i = 0; i < tradeWorkFlowEngines.length; i++) {
-            const engine = tradeWorkFlowEngines[i];
+    stream.on("ohlc", (ohlc) => {
+        const enginesSymbl = tradeWorkFlowEngines[ohlc.symbol.toLowerCase()]
+        for (let i = 0; i < enginesSymbl; i++) {
+            const engine = enginesSymbl[i];
             engine.nextTick({ ohlc });
         }
     })
+
+    stream.on("end", () => {
+        console.log('process end');
+    })
 }
 
-liveTest({ symbols, interval });
+liveMarketTest({ symbols, interval });
