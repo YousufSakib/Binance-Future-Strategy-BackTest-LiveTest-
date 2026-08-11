@@ -1,58 +1,39 @@
-export function checkLiquidationAndExits({ ohlc, openPositions, positionHistory, config: { tpRate, slRate } }) {
+import { calculateLiquidationPrice, check_liquidated, check_slHit, check_tpHit } from "./calculator.js";
 
-  const markPrice = ohlc.markPrice;
+export function checkLiquidationAndExits({ closeAPosition }) {
 
-  //_________________________Liquidation_____________________________
+  //_____________Liquidation______________
 
-  for (let i = 0; i < openPositions.length; i++) {
-    const pos = openPositions[i];
-    const { entryPrice, quantity, allocatedMargin, side } = pos;
-    const liqudationPrice = calculateLiquidationPrice({ side, entryPrice, quantity, allocatedMargin });
-    const isLiquidated = check_liquidated({ liqudationPrice, markPrice, side });
+  for (let i = 0; i < this.openPositions.length; i++) {
+    const pos = this.openPositions[i];
+    const liqudationPrice = calculateLiquidationPrice(pos);
+    const isLiquidated = check_liquidated({ ...pos, liqudationPrice, markPrice: this.markPrice });
     if (isLiquidated) {
-      console.log(`A ${side.toUpperCase()} position liquidated. Exit price: $${markPrice}`);
-      const { grossPnL, totalFee, netPnL, netRoePercentage } = calculateRealizedPnL({ side, entryPrice, markPrice, quantity, allocatedMargin });
-      const closedPosition = { ...pos, exitPrice: markPrice, exitTime: ohlc.eventTime + 600, totalFee, netPnL, netRoePercentage, tpHit: false, slHit: false, liqudated: true };
-      positionHistory.push(closedPosition);
-      openPositions.splice(i, 1);
+      closeAPosition({ pos, reason: { liquidated: true }, index: i });
     }
   }
 
 
-  //_________________________Take Profit______________________________
+  //____________Take Profit______________
 
-  for (let i = 0; i < openPositions.length; i++) {
-    const pos = openPositions[i];
-    const { entryPrice, side, quantity, allocatedMargin } = pos;
-    const isTpHit = check_tpHit({ entryPrice, markPrice, tpRate, side });
-
+  for (let i = 0; i < this.openPositions.length; i++) {
+    const pos = this.openPositions[i];
+    const isTpHit = check_tpHit({ ...pos, markPrice: this.markPrice, tpRate: this.tpRate });
     if (isTpHit) {
-      console.log(`A ${side.toUpperCase()} position TP hit. Exit price: $${markPrice}`);
-      const { grossPnL, totalFee, netPnL, netRoePercentage } = calculateRealizedPnL({ side, entryPrice, markPrice, quantity, allocatedMargin })
-      const closedPosition = { ...pos, exitPrice: markPrice, exitTime: ohlc.eventTime + 600, totalFee, netPnL, netRoePercentage, tpHit: true, slHit: false, liqudated: false };
-      positionHistory.push(closedPosition);
-      openPositions.splice(i, 1);
+      closeAPosition({ pos, reason: { tpHit: true }, index: i });
     }
   }
 
-  //_________________________Stop Loss____________________________
+  //_____________Stop Loss______________
 
-  for (let i = 0; i < openPositions.length; i++) {
-    const pos = openPositions[i];
-    const { entryPrice, side, quantity, allocatedMargin } = pos;
-    const isSlHit = check_slHit({ entryPrice, markPrice, slRate, side });
+  for (let i = 0; i < this.openPositions.length; i++) {
+    const pos = this.openPositions[i];
+    const isSlHit = check_slHit({ ...pos, markPrice: this.markPrice, slRate: this.slRate });
 
     if (isSlHit) {
-      console.log(`A ${side.toUpperCase()} position hit SL, Entry ($${entryPrice}), Close ($${markPrice})`);
-      const { grossPnL, totalFee, netPnL, netRoePercentage } = calculateRealizedPnL({ side, entryPrice, markPrice, quantity, allocatedMargin })
-      const closedPosition = { ...pos, exitPrice: markPrice, exitTime: ohlc.eventTime + 600, totalFee, netPnL, netRoePercentage, tpHit: false, slHit: true, liqudated: false };
-      positionHistory.push(closedPosition);
-      openPositions.splice(i, 1);
+      closeAPosition({ pos, reason: { slHit: true }, index: i });
     }
   }
 
 }
-
-
-// { entryPrice, side, entryTime, quantity, allocatedMargin, exitPrice, exitTime, totalFee, netPnL, netRoePercentage, tpHit, slHit, liqudated };
 

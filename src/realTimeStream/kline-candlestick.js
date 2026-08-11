@@ -1,18 +1,24 @@
 import { EventEmitter } from "node:events";
 import logger from "../helpers/logger.js";
 import { connectWebSocket } from "../helpers/websocket.js";
+import { runOnProcessTerm } from "../helpers/runOnTermination.js";
 
 
 function connectWSCandleStreams({ url }) {
 
   const streamEmitter = new EventEmitter();
 
+  process.on('exit', (code) => {
+    streamEmitter.emit("Sakib", {});
+    console.log('ended')
+  });
+
   connectWebSocket({
     url, onMessage: (data) => {
       try {
         const raw = JSON.parse(data);
         const k = raw?.data?.k;
-        if(raw?.data?.e !== "kline") return;
+        if (raw?.data?.e !== "kline") return;
 
         const candleData = {
           eventType: raw.data.e,                                 // Event Type (kline)
@@ -35,7 +41,7 @@ function connectWSCandleStreams({ url }) {
           takerBuyQuoteVolume: parseFloat(k.Q)              // Taker Buy Quote Asset Volume
         };
 
-        streamEmitter.emit('olhc', candleData);
+        streamEmitter.emit('ohlc', candleData);
 
       } catch (error) {
         logger.error(error.message);
@@ -49,13 +55,13 @@ function connectWSCandleStreams({ url }) {
 
 export function getRealTimeKlineStream({ symbols, interval }) {
 
-    if (!Array.isArray(symbols)) throw new Error(`The parameter "symbols", must be an array!`);
-    if (!interval) throw new Error(`The parameter "interval", must be an array!`);
+  if (!Array.isArray(symbols)) throw new Error(`The parameter "symbols", must be an array!`);
+  if (!interval) throw new Error(`The parameter "interval", must be an array!`);
 
-    const streams = symbols.map((s) => `${s.toLowerCase()}@kline_${interval}`).join("/");
-    const url = `wss://fstream.binance.com/market/stream?streams=${streams}`;
+  const streams = symbols.map((s) => `${s.toLowerCase()}@kline_${interval}`).join("/");
+  const url = `wss://fstream.binance.com/market/stream?streams=${streams}`;
 
-    return connectWSCandleStreams({ url });
+  return connectWSCandleStreams({ url });
 }
 
 

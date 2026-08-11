@@ -38,7 +38,7 @@ export function connectWebSocket({ url, onMessage }) {
     ws.on("close", () => {
         logger.warn("Connection closed. Reconnecting in 3 seconds...");
         clearInterval(pingInterval);
-        setTimeout(connectWebSocket, 3000);
+        setTimeout(connectWebSocket, 3000, { url, onMessage });
     });
 
     ws.on("error", (error) => {

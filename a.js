@@ -1,8 +1,5 @@
-function User(name) {
-    this.name = name
-
-    this.Customer = function() {
-        
-    }
+function ping({ event }) {
+    console.log(event);
 }
 
+setTimeout(ping, 1000, { event: "message" })

@@ -45,7 +45,7 @@ function printPositions() {
 
   for (let i = 0; i < positionHistory.length; i++) {
     const posHist = positionHistory[i];
-    const { side, allocatedMargin, netPnL, tpHit, slHit, liqudated } = posHist;
+    const { side, allocatedMargin, netPnL, tpHit, slHit, liquidated } = posHist;
 
     totalAllocatedMargin += allocatedMargin;
     totalNetPnL += netPnL;
@@ -60,7 +60,7 @@ function printPositions() {
     }
     if (tpHit) tpHitCnt++;
     if (slHit) slHitCnt++;
-    if (liqudated) liquidatedCnt++;
+    if (liquidated) liquidatedCnt++;
   }
 
   console.clear();

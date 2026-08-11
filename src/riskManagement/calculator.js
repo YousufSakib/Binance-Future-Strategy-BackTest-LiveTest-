@@ -1,3 +1,4 @@
+import { assertRequiredParams } from "../helpers/validator.js";
 
 export function calculateLiquidationPrice({
     side,
@@ -7,6 +8,9 @@ export function calculateLiquidationPrice({
     mmr = 0.005,
     cumMaintenanceAmount = 0
 }) {
+
+    assertRequiredParams({ side, entryPrice, quantity, allocatedMargin }, "calculateLiquidationPrice");
+
     const positionValue = entryPrice * quantity;
     const normalizedSide = side.toUpperCase();
 
@@ -34,6 +38,9 @@ export function calculateRealizedPnL({
     entryFeeRate = 0.0005,
     exitFeeRate = 0.0005
 }) {
+
+    assertRequiredParams({ side, entryPrice, markPrice, quantity, allocatedMargin }, "calculateRealizedPnL");
+    
     const normalizedSide = side.toUpperCase();
 
     let grossPnL = 0;
@@ -76,6 +83,9 @@ export function calculateUnrealizedPnl({
     allocatedMargin,
     entryFeeRate = 0.0005
 }) {
+
+    assertRequiredParams({ side, entryPrice, markPrice, quantity, allocatedMargin}, "calculateUnrealizedPnl");
+
     const normalizedSide = side.toUpperCase();
     let unrealizedPnl = 0;
 
@@ -106,6 +116,8 @@ export function calculateUnrealizedPnl({
 
 
 export function check_tpHit({ entryPrice, markPrice, tpRate, side }) {
+    
+    assertRequiredParams({ entryPrice, markPrice, tpRate, side }, "check_tpHit");
     const normalizedSide = side.toUpperCase();
 
     if (normalizedSide === "SHORT") {
@@ -120,6 +132,8 @@ export function check_tpHit({ entryPrice, markPrice, tpRate, side }) {
 }
 
 export function check_slHit({ entryPrice, markPrice, slRate, side }) {
+    assertRequiredParams({ entryPrice, markPrice, slRate, side }, "check_slHit");
+
     const normalizedSide = side.toUpperCase();
 
     if (normalizedSide === "SHORT") {
@@ -134,6 +148,8 @@ export function check_slHit({ entryPrice, markPrice, slRate, side }) {
 }
 
 export function check_liquidated({ liqudationPrice, markPrice, side }) {
+    assertRequiredParams({ liqudationPrice, markPrice, side }, "check_liquidation");
+
     const normalizedSide = side.toUpperCase();
 
     if (normalizedSide === "SHORT") {

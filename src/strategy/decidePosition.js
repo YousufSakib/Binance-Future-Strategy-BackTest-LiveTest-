@@ -1,43 +1,41 @@
+export function decidePosition({ openNewPosition }) {
 
-let runningTimeSec = "";
+  const self = this.strategy;
 
-export function decidePosition({ olhc, openNewPosition }) {
+  if (self.runningTimeSec === "") self.runningTimeSec = this.ohlc.eventTime;
+  else if (this.ohlc.eventTime === self.runningTimeSec) return;
+  else self.runningTimeSec = this.ohlc.eventTime;
 
-  if (runningTimeSec === "") runningTimeSec = data.eventTime;
-  else if (data.eventTime === runningTimeSec) return;
-  else runningTimeSec = data.eventTime;
-
-  if (window.length < windowSec) {
-    window.push(data.closePrice);
+  if (self.window.length < self.windowSize) {
+    self.window.push(this.markPrice);
     return;
   }
   else {
-    for (let i = 1; i < windowSec; i++) {
-      window[i - 1] = window[i];
+    for (let i = 1; i < self.windowSize; i++) {
+      self.window[i - 1] = self.window[i];
     }
-    window[windowSec - 1] = data.closePrice;
+    self.window[self.windowSize - 1] = this.markPrice;
   }
 
   let shouldOpenShort = true;
   let shouldOpenLong = true;
-  const markPrice = window[windowSec - 1];
 
-  //_________________________Open Position___________________________
+  //__________Open Position____________
 
-  for (let i = 0; i < windowSec - 1; i++) {
-    if (markPrice >= window[i]) {
+  for (let i = 0; i < self.windowSize - 1; i++) {
+    if (this.markPrice >= self.window[i]) {
       shouldOpenLong = false;
     }
-    if (markPrice <= window[i]) {
+    if (this.markPrice <= self.window[i]) {
       shouldOpenShort = false;
     }
   }
 
   if (shouldOpenLong) {
-    openNewPosition({ side: "long" })
+    openNewPosition({ side: "long", symbol: this.ohlc.symbol })
   }
 
   if (shouldOpenShort) {
-    openNewPosition({ side: "short" })
+    openNewPosition({ side: "short", symbol: this.ohlc.symbol })
   }
 }
