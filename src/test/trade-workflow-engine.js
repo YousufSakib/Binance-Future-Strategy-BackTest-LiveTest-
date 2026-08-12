@@ -23,56 +23,68 @@ export function TradeWorkflowEngine(executionProfile) {
             tpRate,
             windowSize
         },
-        performance
+        symbol,
     } = executionProfile;
 
     this.positionHistory = positionHistory;
     this.openPositions = openPositions;
 
-    this.performance = performance;
-    
     this.strategy = {};
     this.strategy.window = window;
     this.strategy.windowSize = windowSize;
     this.strategy.runningTimeSec = runningTimeSec;
-    
+
     this.positionSizeUSDT = positionSizeUSDT;
     this.leverage = leverage;
     this.slRate = slRate;
     this.tpRate = tpRate;
+    this.paramVariationStr = executionProfile.variation.key;
+    this.symbol = symbol
+}
+
+function closeAPosition({ reason, pos, index }) {
+    const { grossPnL, totalFee, netPnL, netRoePercentage } = calculateRealizedPnL({ ...pos, markPrice: this.markPrice });
+    const closedPosition = { ...pos, exitPrice: this.markPrice, exitTime: this.ohlc.eventTime, totalFee, netPnL, netRoePercentage, tpHit: false, slHit: false, liquidated: false, forcedClosed: false, ...reason };
+    this.positionHistory.push(closedPosition);
+    this.openPositions.splice(index, 1);
+    logger.info(`Closed a position of ${pos.symbol.toUpperCase()}. Exitprice: $${this.markPrice}, netPnL: ${netPnL}, netRoePercentage: ${netRoePercentage} (${pos.side})`);
 }
 
 TradeWorkflowEngine.prototype.nextTick = function ({ ohlc }) {
+
+    if(this.symbol.toUpperCase() !== ohlc.symbol.toUpperCase())return;
 
     this.markPrice = ohlc.closePrice;
     this.ohlc = ohlc;
 
     decidePosition.bind(this)({
         openNewPosition: ({ side, symbol }) => {
-            
+
             const quantity = this.positionSizeUSDT / this.markPrice;
             const allocatedMargin = this.positionSizeUSDT / this.leverage;
-            
+
             const position = { symbol, entryPrice: this.markPrice, side, entryTime: this.ohlc.eventTime, quantity, allocatedMargin };
             this.openPositions.push(position);
-            
+
             logger.info(`New Position of ${symbol.toUpperCase()}. Entryprice: $${this.markPrice}, Quantity: ${quantity} ( ${side} )`);
         }
     });
 
     checkLiquidationAndExits.bind(this)({
+        closeAPosition: closeAPosition.bind(this)
+    });
+}
 
-        closeAPosition: ({ reason, pos, index }) => {
-            
-            const { grossPnL, totalFee, netPnL, netRoePercentage } = calculateRealizedPnL({ ...pos, markPrice: this.markPrice });
-            const closedPosition = { ...pos, exitPrice: this.markPrice, exitTime: this.ohlc.eventTime, totalFee, netPnL, netRoePercentage, tpHit: false, slHit: false, liquidated: false, ...reason };
-            this.positionHistory.push(closedPosition);
-            this.openPositions.splice(index, 1);
-            logger.info(`Closed a position of ${pos.symbol.toUpperCase()}. Exitprice: $${this.markPrice}, netPnL: ${netPnL}, netRoePercentage: ${netRoePercentage} (${pos.side})`);
-        }
-    })
+TradeWorkflowEngine.prototype.closeAllPositions = function () {
+    for (let i = 0; i < this.openPositions.length; i++) {
+        const reason = { forcedClosed: true };
+        const pos = this.openPositions[i];
+        closeAPosition.bind(this)({ reason, pos, index: i });
+    }
 }
 
 
+
+
 // openPositions Schema:   { symbol, entryPrice, side, entryTime, quantity, allocatedMargin }
-// positionHistory Schema: { symbol, entryPrice, side, entryTime, quantity, allocatedMargin, exitPrice, exitTime, totalFee, netPnL, netRoePercentage, tpHit, slHit, liquidated }
+// positionHistory Schema: { symbol, entryPrice, side, entryTime, quantity, allocatedMargin, exitPrice, exitTime, totalFee, netPnL, netRoePercentage, tpHit, slHit, liquidated, forcedClosed }

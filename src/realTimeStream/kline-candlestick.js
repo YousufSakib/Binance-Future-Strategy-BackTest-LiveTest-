@@ -1,17 +1,12 @@
 import { EventEmitter } from "node:events";
 import logger from "../helpers/logger.js";
 import { connectWebSocket } from "../helpers/websocket.js";
-import { runOnProcessTerm } from "../helpers/runOnTermination.js";
 
+import { runOnTermination } from "../helpers/runOnTermination.js";
 
 function connectWSCandleStreams({ url }) {
 
   const streamEmitter = new EventEmitter();
-
-  process.on('exit', (code) => {
-    streamEmitter.emit("Sakib", {});
-    console.log('ended')
-  });
 
   connectWebSocket({
     url, onMessage: (data) => {
@@ -46,6 +41,9 @@ function connectWSCandleStreams({ url }) {
       } catch (error) {
         logger.error(error.message);
       }
+    }, 
+    onEnd: () => {
+      streamEmitter.emit("end");
     }
   });
 

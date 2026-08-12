@@ -1,6 +1,7 @@
+import logger from "../helpers/logger.js";
+import { StrategyMetric } from "../performanceMeasure/metric.js";
 import { getRealTimeKlineStream } from "../realTimeStream/kline-candlestick.js";
 import { create_param_combinations } from "./simple-param-combination.js";
-import { exchangeSimulation } from "./simulation.js";
 import { TradeWorkflowEngine } from "./trade-workflow-engine.js";
 
 const symbols = [
@@ -36,7 +37,7 @@ const executionProfile = {
         tpRate: 0.05,
         windowSize: 30
     },
-    performance: {},
+    symbol: null,
 }
 
 
@@ -45,6 +46,7 @@ export function liveMarketTest({ symbols, interval }) {
     const stream = getRealTimeKlineStream({ symbols, interval });
 
     const tradeWorkFlowEngines = {};
+    const metric = new StrategyMetric(tradeWorkFlowEngines);
 
     const variations = create_param_combinations(executionProfile.variation);
 
@@ -54,28 +56,42 @@ export function liveMarketTest({ symbols, interval }) {
 
         const profile = { ...executionProfile, variation };
 
+        const key = variations[i].key;
+
+        tradeWorkFlowEngines[key] = {};
+
         for (let j = 0; j < symbols.length; j++) {
-            const deepClonedProfile = structuredClone(profile);
+
+            const deepClonedProfile = structuredClone({ ...profile, symbol: symbols[j] });
             const engine = new TradeWorkflowEngine(deepClonedProfile);
 
-            const symblLow = symbols[i].toLowerCase();
+            const symblHigh = symbols[j].toUpperCase();
 
-            if (!tradeWorkFlowEngines[symblLow]) tradeWorkFlowEngines[symblLow] = [engine];
-            else tradeWorkFlowEngines[symblLow].push(engine);
+            tradeWorkFlowEngines[key][symblHigh] = engine;
         }
     }
 
     stream.on("ohlc", (ohlc) => {
-        const enginesSymbl = tradeWorkFlowEngines[ohlc.symbol.toLowerCase()]
-        for (let i = 0; i < enginesSymbl; i++) {
-            const engine = enginesSymbl[i];
+        for (let i = 0; i < variations.length; i++) {
+            const engine = tradeWorkFlowEngines[variations[i].key][ohlc.symbol.toUpperCase()];
             engine.nextTick({ ohlc });
         }
+        // metric.showReport()
+
     })
 
     stream.on("end", () => {
-        console.log('process end');
+
+        for (let i = 0; i < variations.length; i++) {
+            for (let j = 0; j < symbols.length; j++) {
+                const engine = tradeWorkFlowEngines[variations[i].key][symbols[j].toUpperCase()];
+                engine.closeAllPositions();
+            }
+        }
+
+        metric.showReport()
     })
 }
+
 
 liveMarketTest({ symbols, interval });

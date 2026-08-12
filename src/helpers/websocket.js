@@ -1,7 +1,19 @@
 import WebSocket from "ws";
 import logger from "./logger.js";
+import { runOnTermination } from "./runOnTermination.js";
 
-export function connectWebSocket({ url, onMessage }) {
+let currentWS = null;
+
+runOnTermination(() => {
+    if (currentWS && (currentWS.readyState === WebSocket.OPEN || currentWS.readyState === WebSocket.CONNECTING)) {
+        currentWS.close(1000, Buffer.from("Work Finished"));
+    }else {
+        console.log("WS undefined");
+    }
+    
+})
+
+export function connectWebSocket({ url, onMessage, onEnd }) {
     if (!url) {
         throw new Error(`A valid WS "url" parameter required. Found url: (${url})`)
     }
@@ -10,9 +22,15 @@ export function connectWebSocket({ url, onMessage }) {
         throw new Error(`A valid "onMessage" function required in parameter.`)
     }
 
+    if (typeof onEnd !== 'function') {
+        throw new Error(`A valid "onEnd" function required in parameter.`)
+    }
+
     logger.info("Connecting to Websocket....");
 
     const ws = new WebSocket(url);
+
+    currentWS = ws;
 
     let pingInterval;
 
@@ -35,10 +53,22 @@ export function connectWebSocket({ url, onMessage }) {
         ws.pong();
     });
 
-    ws.on("close", () => {
-        logger.warn("Connection closed. Reconnecting in 3 seconds...");
+    ws.on("close", (code, reason) => {
+
+        const reasonText = reason ? reason.toString() : "No reason provided";
+
+        if (ws === currentWS) currentWS = null;
+
         clearInterval(pingInterval);
-        setTimeout(connectWebSocket, 3000, { url, onMessage });
+        
+        logger.warn(`Connection closed. Code: ${code}, Reason: ${reasonText}.`);
+
+        if (code !== 1000) {
+            logger.info(`Reconnecting in 3 seconds...`);
+            setTimeout(connectWebSocket, 3000, { url, onMessage, onEnd });
+        }else {
+            onEnd()
+        }
     });
 
     ws.on("error", (error) => {
