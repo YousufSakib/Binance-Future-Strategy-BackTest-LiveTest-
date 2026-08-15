@@ -3,6 +3,10 @@ import { StrategyMetric } from "../performanceMeasure/metric.js";
 import { getRealTimeKlineStream } from "../realTimeStream/kline-candlestick.js";
 import { create_param_combinations } from "./simple-param-combination.js";
 import { TradeWorkflowEngine } from "./trade-workflow-engine.js";
+import { monitorEventLoopDelay } from 'perf_hooks';
+
+const h = monitorEventLoopDelay();
+h.enable();
 
 const symbols = [
     "BTCUSDT",  // # Market Leader / Benchmark
@@ -77,7 +81,8 @@ export function liveMarketTest({ symbols, interval }) {
             engine.nextTick({ ohlc });
         }
         // metric.showReport()
-
+        
+        console.log(`Event Loop D : ${(h.mean / 1e6).toFixed(2)} ms`);
     })
 
     stream.on("end", () => {
